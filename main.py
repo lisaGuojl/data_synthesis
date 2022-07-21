@@ -68,17 +68,15 @@ def generate(pis, gap, pi_glns, same_flag, path_data):
                 last_event = path_data[0][-1]
                 auction_gln = last_event['next_pi_gln']
                 if len(path_data[i]) != 0:
-                    # auction_gln = path_data[i][0]['auction_gln']
                     customer_gln = path_data[i][0]['customer_gln']
-
-                if len(path_data[i]) != 0 and same_flag:
-                    next_pi_gln = path_data[i][0]['next_pi_gln']
+                    if same_flag:
+                        next_pi_gln = path_data[i][0]['next_pi_gln']
                 else:
                     next_pi = int(args.pis[i+1])
                     # auction_gln = last_event['next_pi_gln']
                     if next_pi == 3:
                         next_pi_gln = random.choice(tuple(pi_glns[2]))
-                        customer_gln = random.choice(tuple(pi_glns[int(args.pis[i+1]) - 1]))
+                        customer_gln = random.choice(tuple(pi_glns[int(args.pis[i+2]) - 1]))
                     else:
                         customer_gln = random.choice(tuple(pi_glns[next_pi - 1]))
                         next_pi_gln = customer_gln
