@@ -17,7 +17,7 @@
 
 ## 2、
 	fabric-go-demo
-		--chaincode/chaincode.go  the current version of chaincode installed on BCS
+        --chaincode/chaincode.go  the current version of chaincode installed on BCS
         --src/main.go  demo code to submit transactions
         --src/fabric-sdk-go  fabric-sdk-go v1.0.0
 
