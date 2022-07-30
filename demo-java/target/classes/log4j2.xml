@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration status="INFO" monitorInterval="1800">
+
+    <Properties>
+        <property name="console_log_pattern">%d %p [%c] - %m%n</property>
+        <property name="output_log_level">INFO</property>
+        <property name="console_print_level">INFO</property>
+    </Properties>
+
+    <appenders>
+        <Console name="Console" target="SYSTEM_OUT">
+            <ThresholdFilter level="${console_print_level}" onMatch="ACCEPT" onMismatch="DENY"/>
+            <PatternLayout pattern="${console_log_pattern}"/>
+        </Console>
+    </appenders>
+
+    <loggers>
+        <logger name="org.apache.log4j.Logger" level="INFO" additivity="false">
+            <appender-ref ref="Console"/>
+        </logger>
+
+        <root level="${output_log_level}">
+            <appender-ref ref="Console"/>
+        </root>
+    </loggers>
+
+</configuration>
