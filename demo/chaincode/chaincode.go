@@ -37,6 +37,11 @@ type TxInfo struct {
 	Timestamp string `json:"Timestamp"`
 }
 
+type TrackInfo struct {
+	Key       string   `json:"Key"`
+	TxHistory []TxInfo `json:"Timestamp"`
+}
+
 // InitLedger adds a base set of assets to the ledger
 func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error {
 	assets := []Asset{
@@ -151,6 +156,53 @@ func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterf
 	//return ctx.GetStub().PutState(OutputGTIN, eventJSON)
 	//return ctx.GetStub().setEvent("addCTE", eventJSON)
 	return string(resJson), nil
+}
+
+// CreateTxHistory issues a new record to the world state with given details.
+func (s *SmartContract) CreateTxHistory(ctx contractapi.TransactionContextInterface, key string) ([]byte, error) {
+	exists, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return nil, err
+	}
+	if exists != nil {
+		return nil, fmt.Errorf("the transaction history %s already exists", id)
+	}
+
+	trackinfo := TrackInfo{
+		Key:       key,
+		TxHistory: []TxInfo,
+	}
+	trackinfoJSON, err := json.Marshal(trackinfo)
+	if err != nil {
+		return nil, err
+	}
+	_ = ctx.GetStub().PutState(key, trackinfoJSON)
+
+	return trackinfoJSON, nil
+}
+
+func (s *SmartContract) RecordTx(ctx contractapi.TransactionContextInterface, key string, txinfo TxInfo) error {
+	trackinfoJSON, err := ctx.GetStub().GetState(key)
+	if err != nil {
+		return fmt.Errorf("failed to read from world state: %v", err)
+	}
+	if trackinfoJSON == nil {
+		trackinfoJSON, err = s.CreateTxHistory(ctx, key)
+		if err != nil {
+			return err
+		}
+	}
+
+	trackinfo := new(TrackInfo)
+	_ = json.Unmarshal(trackinfoJSON, trackinfo)
+
+	trackinfo.TxHistory = append(trackinfo.TxHistory, txinfo)
+	newtrackinfoJSON, err := json.Marshal(trackinfo)
+	if err != nil {
+		return err
+	}
+
+	return ctx.GetStub().PutState(key, newtrackinfoJSON)
 }
 
 // ReadAsset returns the asset stored in the world state with given id.
@@ -269,3 +321,4 @@ func main() {
 		fmt.Printf("Error starting fishery chaincode: %s", err.Error())
 	}
 }
+
