@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strconv"
@@ -39,7 +41,7 @@ type TxInfo struct {
 
 type TrackInfo struct {
 	Key       string   `json:"Key"`
-	TxHistory []TxInfo `json:"Timestamp"`
+	TxHistory []string `json:"Timestamp"`
 }
 
 // InitLedger adds a base set of assets to the ledger
@@ -122,6 +124,46 @@ func (s *SmartContract) AddCTE(ctx contractapi.TransactionContextInterface, even
 	return string(resJson), nil
 }
 
+func (s *SmartContract) AddCTEwithState(ctx contractapi.TransactionContextInterface, assetid string, eventtype int, inputgtin string, outputgtin string, serialnnumber string, generatorgln string, time string, amount string) (string, error) {
+	event := Event{
+		EventType:    eventtype,
+		InputGTIN:    inputgtin,
+		OutputGTIN:   outputgtin,
+		SerialNumber: serialnnumber,
+		GeneratorGLN: generatorgln,
+		Time:         time,
+		Amount:       amount,
+	}
+	eventJSON, err := json.Marshal(event)
+	if err != nil {
+		return "", err
+	}
+	ctx.GetStub().SetEvent("addCTE", eventJSON)
+	txid := ctx.GetStub().GetTxID()
+	//timestamp, err := ctx.GetStub().GetTxTimestamp()
+	if err != nil {
+		return "", err
+	}
+	//txinfo := TxInfo{txid, strconv.FormatInt(timestamp.GetSeconds(), 10)}
+	//resJson, err := json.Marshal(txinfo)
+	hasher := sha256.New()
+	hasher.Write([]byte(outputgtin + serialnnumber))
+	key := hex.EncodeToString(hasher.Sum(nil))
+	err = s.RecordTx(ctx, key, txid)
+
+	if err != nil {
+		return "", err
+	}
+	err = s.AddCoin(ctx, assetid)
+	if err != nil {
+		return "", err
+	}
+
+	//return ctx.GetStub().PutState(OutputGTIN, eventJSON)
+	//return ctx.GetStub().setEvent("addCTE", eventJSON)
+	return string(txid), nil
+}
+
 // AddCTEwithAsset record event data into a transaction
 func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterface, id string, eventtype int, inputgtin string, outputgtin string, serialnnumber string, generatorgln string, time string, amount string) (string, error) {
 	event := Event{
@@ -160,28 +202,24 @@ func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterf
 
 // CreateTxHistory issues a new record to the world state with given details.
 func (s *SmartContract) CreateTxHistory(ctx contractapi.TransactionContextInterface, key string) ([]byte, error) {
-	exists, err := ctx.GetStub().GetState(key)
-	if err != nil {
-		return nil, err
-	}
-	if exists != nil {
-		return nil, fmt.Errorf("the transaction history %s already exists", id)
-	}
-
+	txhistory := make([]string, 0)
 	trackinfo := TrackInfo{
 		Key:       key,
-		TxHistory: []TxInfo,
+		TxHistory: txhistory,
 	}
 	trackinfoJSON, err := json.Marshal(trackinfo)
 	if err != nil {
 		return nil, err
 	}
-	_ = ctx.GetStub().PutState(key, trackinfoJSON)
+	err = ctx.GetStub().PutState(key, trackinfoJSON)
+	if err != nil {
+		return []byte{}, err
+	}
 
 	return trackinfoJSON, nil
 }
 
-func (s *SmartContract) RecordTx(ctx contractapi.TransactionContextInterface, key string, txinfo TxInfo) error {
+func (s *SmartContract) RecordTx(ctx contractapi.TransactionContextInterface, key string, txinfo string) error {
 	trackinfoJSON, err := ctx.GetStub().GetState(key)
 	if err != nil {
 		return fmt.Errorf("failed to read from world state: %v", err)
@@ -194,7 +232,10 @@ func (s *SmartContract) RecordTx(ctx contractapi.TransactionContextInterface, ke
 	}
 
 	trackinfo := new(TrackInfo)
-	_ = json.Unmarshal(trackinfoJSON, trackinfo)
+	err = json.Unmarshal(trackinfoJSON, trackinfo)
+	if err != nil {
+		return err
+	}
 
 	trackinfo.TxHistory = append(trackinfo.TxHistory, txinfo)
 	newtrackinfoJSON, err := json.Marshal(trackinfo)
@@ -321,4 +362,3 @@ func main() {
 		fmt.Printf("Error starting fishery chaincode: %s", err.Error())
 	}
 }
-
