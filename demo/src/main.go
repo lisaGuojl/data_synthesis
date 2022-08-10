@@ -18,6 +18,9 @@ import (
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
+  "github.com/go-gota/gota/dataframe"
+  "log"
+  "time"
 
 
 )
@@ -54,8 +57,6 @@ func main() {
 	// initialize sdk
 	initializeSdk()
 
-
-
 	gw, err := gateway.Connect(
 		gateway.WithSDK(sdk),
 		gateway.WithIdentity(wallet, "admin"),
@@ -75,17 +76,84 @@ func main() {
 	contract := network.GetContract("fisherysc")
 
 	// query asset
-	readAsset(contract)
+	// readAsset(contract)
 	// submit data
-	addCTEwithAsset(contract)
+	// addCTEwithAsset(contract)
+	fmt.Println("submitData:")
+	submitData(contract)
 
+}
+
+func submitData(contract *gateway.Contract) {
+	fileDir := "data/merge_paths"
+	files, err := ioutil.ReadDir(fileDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	for _, f := range files {
+		filePath := filepath.Join(fileDir, f.Name())
+		f, err := os.Open(filePath)
+		if err != nil {
+			log.Fatal("Unable to read input file "+filePath, err)
+		}
+		defer f.Close()
+		df := dataframe.ReadCSV(f)
+		dmap := df.Maps()
+		for i := 0; i < df.Nrow(); i++ {
+			previous_key := fmt.Sprint(dmap[i]["previous_key"])
+			new_key := fmt.Sprint(dmap[i]["new_key"])
+			event_id := fmt.Sprint(dmap[i]["event_id"])
+			event_type := fmt.Sprint(dmap[i]["event_type"])
+			event_time := fmt.Sprint(dmap[i]["event_time"])
+			generator_gln := fmt.Sprint(dmap[i]["generator_gln"])
+			serial_number := fmt.Sprint(dmap[i]["serial_number"])
+			event_location := fmt.Sprint(dmap[i]["location_coordinate"])
+			location_name := fmt.Sprint(dmap[i]["location_name"])
+			company_name := fmt.Sprint(dmap[i]["company_name"])
+			var gtin string
+			if _, ok := dmap[i]["gtin"]; ok {
+				gtin = fmt.Sprint(dmap[i]["gtin"])
+			} else {
+				gtin = fmt.Sprint(dmap[i]["output_gtin"])
+			}
+			args := []string{
+				previous_key,
+				new_key,
+				generator_gln,
+				event_id,
+				event_type,
+				gtin,
+				serial_number,
+				event_time,
+				event_location,
+				location_name,
+				company_name,
+			}
+			fmt.Println(args)
+			createEvent(contract, args)
+			time.Sleep(2 * time.Second)
+
+		}
+	}
+}
+
+// Submit a transaction synchronously, blocking until it has been committed to the ledger.
+func createEvent(contract *gateway.Contract, args []string) {
+	fmt.Printf("Submit Transaction: AddCTEwithAsset \n")
+	//fmt.Println(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
+	_, err := contract.SubmitTransaction("AddCTEwithAsset", args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+	if err != nil {
+		panic(fmt.Errorf("failed to submit transaction: %w", err))
+	}
+
+	fmt.Printf("*** Transaction committed successfully\n")
 }
 
 // Submit a transaction synchronously, blocking until it has been committed to the ledger.
 func addCTEwithAsset(contract *gateway.Contract) {
-	fmt.Printf("Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments \n")
+	//fmt.Printf("Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments \n")
 
-	_, err := contract.SubmitTransaction("addCTEwithAsset", "asset1", "1", "62567598498626", "62567598498626", "3604604142873", "107HAXI", "2022-Jul-23T08:43:08 +0000", "10")
+	_, err := contract.SubmitTransaction("addCTEwithAsset", "['22730166603329'  '32871501330565']", "id2", "asset1", "eventid", "1", "62567598498626", "107HAXI", "2022-Jul-23T08:43:08 +0000", "-8.785488,115.1833109", "Bali", "Bali_vessel_1")
 	if err != nil {
 		panic(fmt.Errorf("failed to submit transaction: %w", err))
 	}
