@@ -14,13 +14,13 @@ import (
 	"bytes"
 	"strings"
 	"encoding/json"
-  "github.com/bitly/go-simplejson"
+  	"github.com/bitly/go-simplejson"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
-  "github.com/go-gota/gota/dataframe"
-  "log"
-  "time"
+  	"github.com/go-gota/gota/dataframe"
+  	"log"
+  	//"time"
 
 
 )
@@ -75,17 +75,16 @@ func main() {
 
 	contract := network.GetContract("fisherysc")
 
-	// query asset
-	// readAsset(contract)
-	// submit data
-	// addCTEwithAsset(contract)
+	// Submit Data
 	fmt.Println("submitData:")
 	submitData(contract)
-
+	// Query credit by id (generator gln)
+	fmt.Println("query credit: ")
+	readAsset(contract, "3554247679854")	
 }
 
 func submitData(contract *gateway.Contract) {
-	fileDir := "data/merge_paths"
+	fileDir := "data/split_path"
 	files, err := ioutil.ReadDir(fileDir)
 	if err != nil {
 		log.Fatal(err)
@@ -131,7 +130,7 @@ func submitData(contract *gateway.Contract) {
 			}
 			fmt.Println(args)
 			createEvent(contract, args)
-			time.Sleep(2 * time.Second)
+			//time.Sleep(2 * time.Second)
 
 		}
 	}
@@ -162,8 +161,8 @@ func addCTEwithAsset(contract *gateway.Contract) {
 }
 
 // Evaluate a transaction by assetID to query ledger state.
-func readAsset(contract *gateway.Contract) {
-	evaluateResult, err := contract.EvaluateTransaction("ReadAsset", "asset1")
+func readAsset(contract *gateway.Contract, id string) {
+	evaluateResult, err := contract.EvaluateTransaction("ReadAsset", id)
 	if err != nil {
 		fmt.Printf("Failed to evaluate transaction: %s\n", err)
 		os.Exit(1)
