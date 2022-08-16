@@ -14,17 +14,13 @@ import (
 	"bytes"
 	"strings"
 	"encoding/json"
-  	"github.com/bitly/go-simplejson"
+	"github.com/bitly/go-simplejson"
 	"github.com/hyperledger/fabric-sdk-go/pkg/fabsdk"
 	"github.com/ghodss/yaml"
 	"github.com/spf13/viper"
-  	"github.com/go-gota/gota/dataframe"
-  	"log"
-  	//"time"
-
-
+	"github.com/go-gota/gota/dataframe"
+	"log"
 )
-
 
 // Global variable
 var (
@@ -76,30 +72,30 @@ func main() {
 	contract := network.GetContract("fisherysc")
 
 	// Submit one CTE, for example
-	args := []string{
-				"912edf2e-933d-4793-9ba0-2077c57070aq",
-				"912edf2e-933d-4793-9ba0-2077c57070aq",
-				"1043022868954",
-				"42547cba-a4aa-4758-812f-a3699489c1c4",
-				"1",
-				"69700806964203",
-				"210UDXYXNFEKJAIWFVQMW",
-				"2022-Aug-09T15:21:40 +0000",
-				"-8.1971482,114.4440049",
-				"Bali",
-				"Bali_factory_2",
-			}
-	addCTE(contract, args)
-	// or addCTETX(contract , args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+	//args := []string{
+	//	"912edf2e-933d-4793-9ba0-2077c57070at",
+	//	"912edf2e-933d-4793-9ba0-2077c57070at",
+	//	"1043022868954",
+	//	"42547cba-a4aa-4758-812f-a3699489c1c4",
+	//	"1",
+	//	"69700806964223",
+	//	"69700806964223",
+	//	"210UDXYXNFEKJAIWFVQMW",
+	//	"2022-Aug-09T15:21:40 +0000",
+	//	"-8.1971482,114.4440049",
+	//	"Bali",
+	//	"Bali_factory_2",
+	//}
+	// addCTE(contract, args)
+	// or addCTETX(contract , args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11])
 
+	// 	// Submit Data from files
+	fmt.Println("submit Data from file:")
+	submitData(contract)
 
-// 	// Submit Data from files
-// 	fmt.Println("submit Data from file:")
-// 	submitData(contract)
-
-// 	// Query credit by id (generator gln)
-// 	fmt.Println("query credit: ")
-// 	readAsset(contract, "3554247679854")
+	// 	// Query credit by id (generator gln)
+	// 	fmt.Println("query credit: ")
+	// 	readAsset(contract, "3554247679854")
 }
 
 func submitData(contract *gateway.Contract) {
@@ -128,11 +124,14 @@ func submitData(contract *gateway.Contract) {
 			event_location := fmt.Sprint(dmap[i]["location_coordinate"])
 			location_name := fmt.Sprint(dmap[i]["location_name"])
 			company_name := fmt.Sprint(dmap[i]["company_name"])
-			var gtin string
+			var input_gtin string
+			var output_gtin string
 			if _, ok := dmap[i]["gtin"]; ok {
-				gtin = fmt.Sprint(dmap[i]["gtin"])
+				input_gtin = fmt.Sprint(dmap[i]["gtin"])
+				output_gtin = fmt.Sprint(dmap[i]["gtin"])
 			} else {
-				gtin = fmt.Sprint(dmap[i]["output_gtin"])
+				input_gtin = fmt.Sprint(dmap[i]["input_gtin"])
+				output_gtin = fmt.Sprint(dmap[i]["output_gtin"])
 			}
 			args := []string{
 				previous_key,
@@ -140,7 +139,8 @@ func submitData(contract *gateway.Contract) {
 				generator_gln,
 				event_id,
 				event_type,
-				gtin,
+				input_gtin,
+				output_gtin,
 				serial_number,
 				event_time,
 				event_location,
@@ -159,7 +159,7 @@ func submitData(contract *gateway.Contract) {
 func addCTE(contract *gateway.Contract, args []string) {
 	fmt.Printf("Submit Transaction: AddCTEwithAsset \n")
 	//fmt.Println(args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7])
-	_, err := contract.SubmitTransaction("AddCTEwithAsset", args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10])
+	_, err := contract.SubmitTransaction("AddCTEwithAsset", args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8], args[9], args[10], args[11])
 	if err != nil {
 		panic(fmt.Errorf("failed to submit transaction: %w", err))
 	}
@@ -168,10 +168,10 @@ func addCTE(contract *gateway.Contract, args []string) {
 }
 
 // Submit a transaction synchronously, blocking until it has been committed to the ledger.
-func addCTETX(contract *gateway.Contract, previous_key string, new_key string, generator_gln string, event_id string, event_type string, gtin string, serial_number string, event_time string, event_location string, location_name string, company_name string) {
+func addCTETX(contract *gateway.Contract, previous_key string, new_key string, generator_gln string, event_id string, event_type string, input_gtin string, output_gtin string, serial_number string, event_time string, event_location string, location_name string, company_name string) {
 	//fmt.Printf("Submit Transaction: CreateAsset, creates new asset with ID, Color, Size, Owner and AppraisedValue arguments \n")
 
-	_, err := contract.SubmitTransaction("addCTEwithAsset", previous_key, new_key, generator_gln, event_id, event_type, gtin, serial_number, event_time, event_location, location_name, company_name)
+	_, err := contract.SubmitTransaction("addCTEwithAsset", previous_key, new_key, generator_gln, event_id, event_type, input_gtin, output_gtin, serial_number, event_time, event_location, location_name, company_name)
 	if err != nil {
 		panic(fmt.Errorf("failed to submit transaction: %w", err))
 	}
