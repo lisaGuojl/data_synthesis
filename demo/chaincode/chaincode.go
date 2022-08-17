@@ -17,12 +17,17 @@ type SmartContract struct {
 // Asset describes basic details of what makes up a simple asset
 //Insert struct field in alphabetic order => to achieve determinism across languages
 // golang keeps the order when marshal to json but doesn't order automatically
+
+// Asset struct is used to store credits of stakeholders
+// Currently we use generator_gln as its ID
+// Value is the credit value
 type Asset struct {
 	ID    string `json:"ID"`
 	Owner string `json:"Owner"`
 	Value int    `json:"Value"`
 }
 
+// CTE data
 type Event struct {
 	EventId      string `json:"event_id"`
 	EventType    int    `json:"event_type"`
@@ -40,15 +45,16 @@ type TxInfo struct {
 	Timestamp string `json:"Timestamp"`
 }
 
-func str2slice(str string) []string{
-    s1 := strings.Replace(str, "[", "", -1)
-    s2 := strings.Replace(s1, "]", "", -1)
-    s := strings.Split(s2, ",")
-    return s
+func str2slice(str string) []string {
+	s1 := strings.Replace(str, "[", "", -1)
+	s2 := strings.Replace(s1, "]", "", -1)
+	s := strings.Split(s2, ",")
+	return s
 }
 
 // InitLedger adds a base set of assets to the ledger
 func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error {
+	// just for test
 	assets := []Asset{
 		{ID: "asset1", Owner: "FishingCompany", Value: 0},
 		{ID: "asset2", Owner: "AuctionCenter", Value: 0},
@@ -73,7 +79,7 @@ func (s *SmartContract) Init(ctx contractapi.TransactionContextInterface) error 
 	return nil
 }
 
-// CreateAsset issues a new asset to the world state with given details.
+// CreateAsset issues a new Asset to the world state with given details.
 func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface, id string, owner string, Value int) error {
 	exists, err := s.AssetExists(ctx, id)
 	if err != nil {
@@ -92,11 +98,15 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 	if err != nil {
 		return err
 	}
-
+	// PutState: put (key, value) into tx's writeset, here key is id, value is assetJSON.
 	return ctx.GetStub().PutState(id, assetJSON)
 }
 
-// AddCTEwithAsset record event data into a transaction
+// AddCTEwithAsset record event data and increase the generator's credit
+// prekey: the key to retrieve the previous CTE data stored in world state
+// newkey: the key used to store this new CTE data. newkey is usually same as the prekey expect on a merge or split point of a path.
+// id: the key to get generator's Asset info (in order to add credit)
+// the rest params will be stored as Event
 func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterface, prekey string, newkey string, id string, eventid string, eventtype int, input_gtin string, output_gtin string, serialnumber string, time string, loc string, locationname string, companyname string) (string, error) {
 	event := Event{
 		EventId:      eventid,
@@ -108,19 +118,20 @@ func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterf
 		EventLoc:     loc,
 		LocationName: locationname,
 		CompanyName:  companyname,
-
 	}
 	neweventJSON, err := json.Marshal(event)
 	if err != nil {
 		return "", err
 	}
 	prekeyList := str2slice(prekey)
-	for _, k := range prekeyList{
+	for _, k := range prekeyList {
+		// Get previous CTE data
 		_, err = ctx.GetStub().GetState(k)
 		if err != nil {
 			return "", fmt.Errorf("failed to get the previous transaction: %v", err)
 		}
 	}
+	// Put neweventJSON into tx's writeset using the key=newkey
 	ctx.GetStub().PutState(newkey, neweventJSON)
 
 	txid := ctx.GetStub().GetTxID()
@@ -143,7 +154,7 @@ func (s *SmartContract) AddCTEwithAsset(ctx contractapi.TransactionContextInterf
 	return string(resJson), nil
 }
 
-// ReadAsset returns the asset stored in the world state with given id.
+// ReadAsset returns the Asset data stored in the world state with given id.
 func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, id string) (*Asset, error) {
 	assetJSON, err := ctx.GetStub().GetState(id)
 	if err != nil {
@@ -253,8 +264,6 @@ func (s *SmartContract) GetAllAssets(ctx contractapi.TransactionContextInterface
 
 	return assets, nil
 }
-
-
 
 func main() {
 
